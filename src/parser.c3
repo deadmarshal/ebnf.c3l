@@ -1,11 +1,8 @@
-module ebnf::parser;
+module ebnf;
 
 import std::collections;
 import std::io;
 import std::os;
-import ebnf::token;
-import ebnf::scanner;
-import ebnf::ast;
 
 struct ParserError
 {

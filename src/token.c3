@@ -1,4 +1,4 @@
-module ebnf::token;
+module ebnf;
 
 import std::io;
 

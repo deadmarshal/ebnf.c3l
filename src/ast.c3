@@ -1,19 +1,16 @@
-module ebnf::ast;
+module ebnf;
 
 import std::collections;
 import std::io;
 
 struct Ebnf
 {
-	// TODO: do i need allocator in Ebnf?
-	Allocator allocator;
 	// TODO: make this hashset to avoid duplicate productions.
 	List{Production} productions;
 }
 
 fn void Ebnf.init(&self, Allocator allocator)
 {
-	self.allocator = allocator;
 	self.productions.init(allocator);
 }
 

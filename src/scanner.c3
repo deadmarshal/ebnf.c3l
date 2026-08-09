@@ -1,10 +1,9 @@
-module ebnf::scanner;
+module ebnf;
 
 import std::collections;
 import std::core::ascii;
 import std::io;
 import std::os;
-import ebnf::token;
 
 alias ScannerResult = Result{List{Token}, ScannerError};
 
