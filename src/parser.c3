@@ -191,7 +191,7 @@ fn Token Parser.advance(&self)
 		return self.previous();
 	}
 
-	return (*self.tokens)[self.tokens.len - 1];
+	return (*self.tokens)[self.tokens.len() - 1];
 }
 
 fn Token Parser.peek(&self) @inline
