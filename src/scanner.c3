@@ -189,7 +189,7 @@ fn char Scanner.peek(self)
 
 fn char Scanner.peekNext(self) @inline
 {
-  if(self.i + 1 >= self.source.len()) return '\0';
+  if(self.i + 1 >= self.source.len) return '\0';
   return self.source[self.i+1];
 }
 
