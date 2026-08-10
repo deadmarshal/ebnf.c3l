@@ -160,16 +160,13 @@ fn Result{Factor, ParserError} Parser.parse_factor(&self)
 			};
 			return result::ok(factor);
 		default:
-			return result::err(
-				(ParserError) {
-					.pos = self.peek().pos,
-					.msg = "Expected '[' or '(' or '{' or identifier or non_terminal in factor",
-				}
-			);
+			return result::err((ParserError) { .pos = self.peek()
+				.pos, .msg = "Expected '[' or '(' or '{' or identifier or non_terminal in factor", });
 	}
 }
 
-fn bool Parser.isAtEnd(&self)
+// Private:
+fn bool Parser.isAtEnd(&self) @inline
 {
 	return self.peek().type == EOF;
 }
@@ -182,16 +179,32 @@ fn bool Parser.check(&self, TokenType type)
 
 fn Token Parser.advance(&self)
 {
-	if (!self.isAtEnd()) self.i++;
-	return self.previous();
+	while (!self.isAtEnd() && (*self.tokens)[self.i].type == COMMENT)
+	{
+		self.i++;
+	}
+
+	if (!self.isAtEnd())
+	{
+		self.i++;
+		while (!self.isAtEnd() && (*self.tokens)[self.i].type == COMMENT) self.i++;
+		return self.previous();
+	}
+
+	return (*self.tokens)[self.tokens.len - 1];
 }
 
-fn Token Parser.peek(&self)
+fn Token Parser.peek(&self) @inline
 {
+	if ((*self.tokens)[self.i].type == COMMENT)
+	{
+		// skip comments.
+		self.i++;
+	}
 	return (*self.tokens)[self.i];
 }
 
-fn Token Parser.previous(&self)
+fn Token Parser.previous(&self) @inline
 {
 	return (*self.tokens)[self.i - 1];
 }
@@ -204,6 +217,6 @@ fn Result{Token, ParserError} Parser.consume(&self, TokenType type, String messa
 	}
 	else
 	{
-		return result::err{Token, ParserError}((ParserError) { .pos = self.peek().pos, .msg = message, });
+		return result::err{Token, ParserError}((ParserError) { .pos = self.peek().pos, .msg = message });
 	}
 }

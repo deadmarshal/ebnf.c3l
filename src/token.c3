@@ -23,7 +23,7 @@ fn sz? Position.to_format(&self, Formatter* f) @dynamic
 enum TokenType
 {
 	EOF,
-	ILLEGAL,
+	COMMENT,
 
 	LPAREN,
 	RPAREN,

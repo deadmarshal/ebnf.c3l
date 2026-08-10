@@ -35,16 +35,17 @@ fn void Scanner.free(&self)
 	self.tokens.free();
 }
 
-fn ScannerResult Scanner.scan(&self)
+fn ScannerResult Scanner.scan(&self, bool preserve_comments = false)
 {
 	while (!self.isAtEnd())
 	{
 		self.i = self.j;
 		Token t = self.scan_token().@or_else(; it)
 		{
-      return result::err(it.error);
+			return result::err(it.error);
 		};
-    self.tokens.push(t);
+		if (!preserve_comments && t.type == COMMENT) continue;
+		self.tokens.push(t);
 	}
 	return result::ok(self.tokens);
 }
@@ -63,6 +64,10 @@ fn Result{Token, ScannerError} Scanner.scan_token(&self)
 	switch (c)
 	{
 		case '(':
+			if (self.peekNext() == '*')
+			{
+				return self.scan_comment();
+			}
 			return result::ok((Token) { .type = LPAREN, .pos = self.pos, .lexeme = "(" });
 		case ')':
 			return result::ok((Token) { .type = RPAREN, .pos = self.pos, .lexeme = ")" });
@@ -97,6 +102,49 @@ fn Result{Token, ScannerError} Scanner.scan_token(&self)
 }
 
 // Private:
+fn Result{Token, ScannerError} Scanner.scan_comment(&self)
+{
+	sz level = 1;
+	char c   = self.peek();
+	while (!self.isAtEnd() && level > 0)
+	{
+		switch (c)
+		{
+			case '\n':
+				self.addLine();
+				self.advance();
+				continue;
+			case '(':
+				c = self.advance();
+				if (c == '*')
+				{
+					level++;
+					c = self.advance();
+				}
+				break;
+			case '*':
+				c = self.advance();
+				if (c == ')')
+				{
+					level--;
+					c = self.advance();
+				}
+				break;
+			default:
+				self.advance();
+		}
+	}
+
+	if (level != 0)
+	{
+		return result::err((ScannerError) { .pos = self.pos, .msg = "unterminated comment", });
+	}
+
+	defer self.i = self.j;
+
+	return result::ok((Token) { .type = COMMENT, .lexeme = self.source[self.i..self.j] });
+}
+
 fn void Scanner.skip(&self)
 {
 	while (!self.isAtEnd() && ascii::is_space(self.peek()))
