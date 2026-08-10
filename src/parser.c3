@@ -184,29 +184,17 @@ fn Token Parser.advance(&self)
 		self.i++;
 	}
 
-	if (!self.isAtEnd())
-	{
-		self.i++;
-		while (!self.isAtEnd() && (*self.tokens)[self.i].type == COMMENT) self.i++;
-		return self.previous();
-	}
-
-	return (*self.tokens)[self.tokens.len() - 1];
+	return (*self.tokens)[self.i++];
 }
 
 fn Token Parser.peek(&self) @inline
 {
-	if ((*self.tokens)[self.i].type == COMMENT)
+	while((*self.tokens)[self.i].type == COMMENT)
 	{
 		// skip comments.
 		self.i++;
 	}
 	return (*self.tokens)[self.i];
-}
-
-fn Token Parser.previous(&self) @inline
-{
-	return (*self.tokens)[self.i - 1];
 }
 
 fn Result{Token, ParserError} Parser.consume(&self, TokenType type, String message)
