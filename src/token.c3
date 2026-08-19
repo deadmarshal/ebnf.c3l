@@ -2,7 +2,7 @@ module ebnf;
 
 import std::io;
 
-struct Position
+struct Position (Printable)
 {
 	String filename;
 	usz row, col, offset;
@@ -23,7 +23,6 @@ fn sz? Position.to_format(&self, Formatter* f) @dynamic
 enum TokenType
 {
 	EOF,
-	COMMENT,
 
 	LPAREN,
 	RPAREN,
@@ -40,7 +39,7 @@ enum TokenType
 	NON_TERMINAL,
 }
 
-struct Token
+struct Token (Printable)
 {
 	TokenType type;
 	Position pos;
