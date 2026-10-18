@@ -5,206 +5,233 @@ import std::core::ascii;
 import std::io;
 import std::os;
 
-alias ScannerResult = Result{List{Token}, ScannerError};
+alias ScannerResult = Result{void,ParseError};
 
-struct ScannerError
-{
-	Position pos;
-	String msg;
-}
-
+// Scanner owns tokens.
 struct Scanner
 {
-	Allocator allocator;
-	Position pos;
-	usz i, j;
-	String source;
-	List{Token} tokens;
+  Allocator allocator;
+  Position pos;
+  usz i, j;
+  String source;
+  List{Token} tokens;
 }
 
-fn void Scanner.init(&self, Allocator allocator, String filename, String source)
+fn void scanner_init(Scanner *scanner,
+		     Allocator allocator,
+		     String filename,
+		     String source) @private
 {
-	self.allocator = allocator;
-	self.tokens.init(allocator);
-	self.pos.filename = filename;
-	self.source = source;
+  scanner.allocator = allocator;
+  scanner.tokens.init(allocator);
+  scanner.pos.filename = filename;
+  scanner.source = source;  
 }
 
-fn void Scanner.free(&self)
+fn void scanner_free(Scanner *scanner) @private
 {
-	self.tokens.free();
+  scanner.tokens.free();
 }
 
-fn ScannerResult Scanner.scan(&self)
+fn ScannerResult scanner_scan(Scanner *scanner) @private
 {
-	while (!self.isAtEnd())
+  while(true) {
+    Token t = scanner_scan_token(scanner).@or_else(;it) {
+      return result::err(it.error);
+    };
+    scanner.tokens.push(t);
+    if(t.type == EOF) break;
+  }
+  return result::ok();
+}
+
+fn Result{Token,ParseError} scanner_scan_token(Scanner *scanner)
+{
+  scanner_skip(scanner);
+  scanner.i = scanner.j;
+  if(scanner_is_at_end(scanner))
+  {
+    return result::ok((Token){.type = EOF,.pos = scanner.pos});
+  }
+  char c = scanner_advance(scanner);
+  switch(c)
+  {
+    case '(':
+      if (scanner_match(scanner, '*'))
+      {
+	ParseError err;
+	if (!scanner_skip_comments(scanner, &err))
 	{
-		Token t = self.scan_token().@or_else(; it)
-		{
-			return result::err(it.error);
-		};
-		self.tokens.push(t);
+	  return result::err(err);
 	}
-	return result::ok(self.tokens);
+	return scanner_scan_token(scanner);
+      }
+      return result::ok((Token){.type = LPAREN,
+	.pos = scanner.pos, .lexeme = "("});
+    case ')':
+      return result::ok((Token){.type = RPAREN,
+	.pos = scanner.pos,
+	.lexeme = ")"});
+    case '.':
+      return result::ok((Token){.type = DOT,
+	.pos = scanner.pos,
+	.lexeme = "."});
+    case '=':
+      return result::ok((Token){.type = EQUAL,
+	.pos = scanner.pos,
+	.lexeme = "="});
+    case '[':
+      return result::ok((Token){.type = LSBRACKET,
+	.pos = scanner.pos,
+	.lexeme = "["});
+    case ']':
+      return result::ok((Token){.type = RSBRACKET,
+	.pos = scanner.pos,
+	.lexeme = "]"});
+    case '{':
+      return result::ok((Token){.type = LBRACKET,
+	.pos = scanner.pos,
+	.lexeme = "{"});
+    case '}':
+      return result::ok((Token){.type = RBRACKET,
+	.pos = scanner.pos,
+	.lexeme = "}"});
+    case '|':
+      return result::ok((Token){.type = BAR,
+	.pos = scanner.pos,
+	.lexeme = "|"});
+    case '"':
+    case '\'':
+      return scanner_scan_terminal(scanner,c);
+    default:
+      if(is_identifier_char(c))
+      {
+	return scanner_scan_non_terminal(scanner);
+      }
+      return result::err((ParseError){.pos = scanner.pos,
+	.msg = string::tformat("Unexpected character: '%c'",c)});
+  }
 }
 
-fn Result{Token, ScannerError} Scanner.scan_token(&self)
+fn bool scanner_skip_comments(Scanner *scanner,
+			      ParseError *err) @private
 {
-	self.skip();
-  self.i = self.j;
+  sz level = 1;
+  while(!scanner_is_at_end(scanner) && level > 0)
+  {
+    char c = scanner_peek(scanner);
+    switch(c)
+    {
+      case '\n':
+	scanner_advance(scanner);
+	scanner_add_line(scanner);
+      case '(':
+	scanner_advance(scanner);
+	if(scanner_match(scanner,'*')) level++;
+      case '*':
+	scanner_advance(scanner);
+	if(scanner_match(scanner,')')) level--;
+      default:
+	scanner_advance(scanner);
+    }
+  }
 
-	if (self.isAtEnd())
-	{
-		return result::ok((Token) { .type = EOF, .pos = self.pos });
-	}
-
-	char c = self.advance();
-
-	switch (c)
-	{
-		case '(':
-			if (self.match('*'))
-			{
-				ScannerError err;
-				if (!self.skip_comments(&err)) return result::err(err);
-			}
-			return result::ok((Token) { .type = LPAREN, .pos = self.pos, .lexeme = "(" });
-		case ')':
-			return result::ok((Token) { .type = RPAREN, .pos = self.pos, .lexeme = ")" });
-		case '.':
-			return result::ok((Token) { .type = DOT, .pos = self.pos, .lexeme = "." });
-		case '=':
-			return result::ok((Token) { .type = EQUAL, .pos = self.pos, .lexeme = "=" });
-		case '[':
-			return result::ok((Token) { .type = LSBRACKET, .pos = self.pos, .lexeme = "[" });
-		case ']':
-			return result::ok((Token) { .type = RSBRACKET, .pos = self.pos, .lexeme = "]" });
-		case '{':
-			return result::ok((Token) { .type = LBRACKET, .pos = self.pos, .lexeme = "{" });
-		case '}':
-			return result::ok((Token) { .type = RBRACKET, .pos = self.pos, .lexeme = "}" });
-		case '|':
-			return result::ok((Token) { .type = BAR, .pos = self.pos, .lexeme = "|" });
-		case '"':
-			return self.scanTerminal(c);
-		default:
-			if (ascii::is_alpha(c))
-			{
-				return self.scanNonTerminal();
-			}
-			else
-			{
-				return result::err(
-					(ScannerError) { .pos = self.pos, .msg = string::format(tmem, "Unexpected character: '%c'", c), }
-				);
-			}
-	}
+  if(level != 0)
+  {
+    *err = (ParseError){.pos = scanner.pos,
+      .msg = "Unterminated comment"};
+    return false;
+  }
+  scanner.i = scanner.j;
+  return true;
 }
 
-// Private:
-fn bool Scanner.skip_comments(&self, ScannerError* err)
+fn void scanner_skip(Scanner *scanner)
 {
-	sz level = 1;
-	while (!self.isAtEnd() && level > 0)
-	{
-		char c = self.peek();
-		switch (c)
-		{
-			case '\n':
-				self.advance();
-				self.addLine();
-			case '(':
-				self.advance();
-				if (self.match('*')) level++;
-			case '*':
-				self.advance();
-				if (self.match(')')) level--;
-			default:
-				self.advance();
-		}
-	}
-
-	if (level != 0)
-	{
-		*err = (ScannerError) { .pos = self.pos, .msg = "unterminated comment", };
-		return false;
-	}
-
-	self.i = self.j;
-
-	return true;
+  while(!scanner_is_at_end(scanner) &&
+	ascii::is_space(scanner_peek(scanner)))
+  {
+    if(scanner_peek(scanner) == '\n') scanner_add_line(scanner);
+    scanner_advance(scanner);
+  }
+  scanner.i = scanner.j;
 }
 
-fn void Scanner.skip(&self)
+fn Result{Token,ParseError} scanner_scan_terminal(Scanner *scanner,
+						  char end) @private
 {
-	while (!self.isAtEnd() && ascii::is_space(self.peek()))
-	{
-		if (self.peek() == '\n') self.addLine();
-		self.advance();
-	}
-  self.i = self.j;
+  while(!scanner_is_at_end(scanner) && scanner_peek(scanner) != end)
+  {
+    scanner_advance(scanner);
+  }
+  if(scanner_is_at_end(scanner))
+  {
+    return result::err((ParseError){.pos = scanner.pos,
+      .msg = "Unterminated terminal"});
+  }
+
+  defer
+  {
+    scanner_advance(scanner);
+    scanner.i = scanner.j;
+  }
+
+  return result::ok((Token){.type = TERMINAL,.pos = scanner.pos,
+    .lexeme = scanner.source[scanner.i + 1:scanner.j - scanner.i - 1]});
 }
 
-fn Result{Token, ScannerError} Scanner.scanTerminal(&self, char end)
+fn Result{Token,ParseError}
+scanner_scan_non_terminal(Scanner *scanner) @private
 {
-	while (!self.isAtEnd() && self.peek() != end) self.advance();
-	if (self.isAtEnd()) return result::err((ScannerError) { .pos = self.pos, .msg = "Unterminated terminal.", });
-
-	defer
-	{
-		self.advance();
-		self.i = self.j;
-	}
-
-	return result::ok((Token) { .type = TERMINAL, .pos = self.pos, .lexeme = self.source[self.i + 1..self.j - 1], });
+  while(!scanner_is_at_end(scanner) &&
+	is_identifier_char(scanner_peek(scanner)))
+  {
+    scanner_advance(scanner);
+  }
+  defer scanner.i = scanner.j;
+  return result::ok((Token){.type = NON_TERMINAL,
+    .pos = scanner.pos,
+    .lexeme = scanner.source[scanner.i..scanner.j-1]});
 }
 
-fn Result{Token, ScannerError} Scanner.scanNonTerminal(&self)
+fn bool scanner_is_at_end(Scanner *scanner) @inline @private
 {
-	while (!self.isAtEnd() && ascii::is_alpha(self.peek())) self.advance();
-	defer self.i = self.j;
-
-	return result::ok((Token) { .type = NON_TERMINAL, .pos = self.pos, .lexeme = self.source[self.i..self.j - 1], });
+  return scanner.j >= scanner.source.len;
 }
 
-fn bool Scanner.isAtEnd(&self) @inline
+fn char scanner_peek(Scanner *scanner) @private
 {
-	return self.j >= self.source.len;
+  if(scanner_is_at_end(scanner)) return '\0';
+  return scanner.source[scanner.j];
 }
 
-fn char Scanner.peek(&self)
+fn bool scanner_match(Scanner *scanner,
+		      char expected) @inline @private
 {
-	if (self.isAtEnd()) return '\0';
-	return self.source[self.j];
+  if(scanner_peek(scanner) == expected)
+  {
+    scanner_advance(scanner);
+    return true;
+  }
+  return false;
 }
 
-fn bool Scanner.match(&self, char expected) @inline
+fn char scanner_advance(Scanner *scanner) @private
 {
-	if (self.peek() == expected)
-	{
-		self.advance();
-		return true;
-	}
-	return false;
+  if(scanner_is_at_end(scanner)) return '\0';
+  scanner.pos.col++;
+  scanner.pos.offset++;
+  return scanner.source[scanner.j++];
 }
 
-fn char Scanner.peekNext(&self) @inline
+fn void scanner_add_line(Scanner *scanner) @private
 {
-	if (self.i + 1 >= self.source.len) return '\0';
-	return self.source[self.i + 1];
+  scanner.pos.row++;
+  scanner.pos.col = 0;
 }
 
-fn char Scanner.advance(&self)
+fn bool is_identifier_char(char c) @inline @private
 {
-	if (self.isAtEnd()) return '\0';
-	self.pos.col++;
-	self.pos.offset++;
-	return self.source[self.j++];
+  return ascii::is_alnum(c) || c == '_';
 }
 
-fn void Scanner.addLine(&self)
-{
-	self.pos.row++;
-	self.pos.col = 0;
-	self.pos.offset++;
-}
