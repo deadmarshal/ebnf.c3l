@@ -5,8 +5,6 @@ import std::core::ascii;
 import std::io;
 import std::os;
 
-alias ScannerResult = Result{void,ParseError};
-
 // Scanner owns tokens.
 struct Scanner
 {
@@ -33,16 +31,17 @@ fn void scanner_free(Scanner *scanner) @private
   scanner.tokens.free();
 }
 
-fn ScannerResult scanner_scan(Scanner *scanner) @private
+fn bool scanner_scan(Scanner *scanner,ParseError *err) @private
 {
   while(true) {
     Token t = scanner_scan_token(scanner).@or_else(;it) {
-      return result::err(it.error);
+      *err = it.error;
+      return false;
     };
     scanner.tokens.push(t);
     if(t.type == EOF) break;
   }
-  return result::ok();
+  return true;
 }
 
 fn Result{Token,ParseError} scanner_scan_token(Scanner *scanner)
@@ -151,8 +150,8 @@ fn void scanner_skip(Scanner *scanner)
   while(!scanner_is_at_end(scanner) &&
 	ascii::is_space(scanner_peek(scanner)))
   {
-    if(scanner_peek(scanner) == '\n') scanner_add_line(scanner);
-    scanner_advance(scanner);
+    char c = scanner_advance(scanner);
+    if(c == '\n') scanner_add_line(scanner);
   }
   scanner.i = scanner.j;
 }
@@ -228,6 +227,7 @@ fn void scanner_add_line(Scanner *scanner) @private
 {
   scanner.pos.row++;
   scanner.pos.col = 0;
+  scanner.pos.offset++;
 }
 
 fn bool is_identifier_char(char c) @inline @private

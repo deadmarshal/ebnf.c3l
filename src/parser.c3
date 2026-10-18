@@ -32,10 +32,10 @@ struct Parser
 fn void? Parser.init(&self,
 		     Allocator allocator,
 		     String filename,
-		     String source) @private
+		     String source)
 {
   // Scanner:
-  self.scanner = alloc::new_try(allocator)?;
+  self.scanner = alloc::new_try(allocator,Scanner)!;
   scanner_init(self.scanner,
 	       allocator,
 	       filename,
@@ -52,9 +52,8 @@ fn void Parser.free(&self)
 
 fn Result{Ebnf,ParseError} Parser.parse(&self)
 {
-  scanner_scan(self.scanner).@or_else(;it) {
-    return result::err(it.error);
-  };
+  ParseError err;
+  if(!scanner_scan(self.scanner,&err)) return result::err(err);
   
   Ebnf ebnf;
   ebnf.init(self.allocator);
@@ -76,7 +75,6 @@ fn Result{Production, ParseError} parse_production(Parser* p) @local
   Token tok = parser_consume(p,
 			     NON_TERMINAL,
 			     "Expected nonterminal").@or_else(;it) {
-    prod.free(p.allocator);
     return result::err(it.error);
   };
 
@@ -176,7 +174,6 @@ fn Result{Node, ParseError} parse_factor(Parser* p) @local
   if(parser_match(p,LSBRACKET))
   {
     Node inner = parse_expression(p).@or_else(;it) {
-      inner.free(p.allocator);
       return result::err(it.error);
     };
     parser_consume(p,RSBRACKET,"expected ']'").@or_else(;it) {
@@ -190,7 +187,6 @@ fn Result{Node, ParseError} parse_factor(Parser* p) @local
   if(parser_match(p,LBRACKET))
   {
     Node inner = parse_expression(p).@or_else(;it) {
-      inner.free(p.allocator);
       return result::err(it.error);
     };
     parser_consume(p,RBRACKET,"expected '}'").@or_else(;it) {
@@ -204,7 +200,6 @@ fn Result{Node, ParseError} parse_factor(Parser* p) @local
   if(parser_match(p,LPAREN))
   {
     Node inner = parse_expression(p).@or_else(;it) {
-      inner.free(p.allocator);
       return result::err(it.error);
     };
     parser_consume(p,RPAREN,"expected ')'").@or_else(;it) {
@@ -226,7 +221,6 @@ fn Result{Node, ParseError} parse_factor(Parser* p) @local
       .non_terminal = parser_advance(p).lexeme.copy(p.allocator)});
   }
 
-  defer inner.free(p.allocator);
   return result::err((ParseError){
     .pos = parser_peek(p).pos, .msg = "Unexpected token"});
 }

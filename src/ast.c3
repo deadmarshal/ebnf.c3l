@@ -48,8 +48,7 @@ fn Node Node.copy(&self, Allocator allocator)
       break;
     case OPTIONAL:
     case REPETITION:
-      new_node.inner = alloc::malloc(allocator, Node::size);
-      *new_node.inner = self.inner.copy(allocator);
+      new_node.inner = alloc::new(allocator,Node,self.inner.copy(allocator));
       break;
   }
   return new_node;
