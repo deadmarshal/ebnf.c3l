@@ -27,15 +27,13 @@ struct Parser
   Scanner *scanner;
 }
 
-// TODO: not returning optional in init would be good!
-// instead, returning optional in parse function?
-fn void? Parser.init(&self,
+fn void Parser.init(&self,
 		     Allocator allocator,
 		     String filename,
 		     String source)
 {
   // Scanner:
-  self.scanner = alloc::new_try(allocator,Scanner)!;
+  self.scanner = alloc::new(allocator,Scanner);
   scanner_init(self.scanner,
 	       allocator,
 	       filename,
