@@ -20,14 +20,16 @@ fn int main(String[] args)
 
   String content = (String)file::load(mem,args[1])!!;
   defer mem::free(content);
-    
+
   ebnf::Parser parser;
   parser.init(mem,args[1],content);
   defer parser.free();
 
   Ebnf ebnf = parser.parse().@or_else(;it) {
-    io::eprintfn("Parsing failed at position %s, with message: %s",
-		 it.error.pos,it.error.msg);
+    ParseError err = it.error;
+    io::eprintfn("%d:%d:%d: %s",
+		 err.pos.row,err.pos.col,err.pos.offset,
+		 err.msg);
     os::exit(1);
   };
   defer ebnf.free();
