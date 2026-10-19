@@ -5,6 +5,7 @@ import std::io;
 import std::os;
 import std::core::mem::alloc;
 
+<* return value of ebnf::parse on error *>
 struct ParseError
 {
   Position pos;
@@ -19,6 +20,7 @@ fn sz? ParseError.to_format(&self, Formatter* f) @dynamic
   return len;
 }
 
+<* Parser struct *>
 struct Parser
 {
   Allocator allocator;
@@ -27,10 +29,11 @@ struct Parser
   Scanner *scanner;
 }
 
+<* Initializes both scanner and parser *>
 fn void Parser.init(&self,
-		     Allocator allocator,
-		     String filename,
-		     String source)
+		    Allocator allocator,
+		    String filename,
+		    String source)
 {
   // Scanner:
   self.scanner = alloc::new(allocator,Scanner);
@@ -42,12 +45,14 @@ fn void Parser.init(&self,
   self.allocator = allocator;
 }
 
+<* Frees associated memories and scanner and parser structures. *>
 fn void Parser.free(&self)
 {
   scanner_free(self.scanner);
   alloc::free(self.allocator,self.scanner);
 }
 
+<* Parses a string into an Ebnf structure. *>
 fn Result{Ebnf,ParseError} Parser.parse(&self)
 {
   ParseError err;
@@ -67,6 +72,7 @@ fn Result{Ebnf,ParseError} Parser.parse(&self)
 }
 
 // Private:
+<* Parses a EBNF production *>
 fn Result{Production, ParseError} parse_production(Parser* p) @local
 {
   Production prod;
@@ -100,6 +106,7 @@ fn Result{Production, ParseError} parse_production(Parser* p) @local
   return result::ok(prod);
 }
 
+<* Parses an EBNF expression. *>
 fn Result{Node, ParseError} parse_expression(Parser* p) @local
 {
   List{Node} alternatives;
@@ -129,6 +136,7 @@ fn Result{Node, ParseError} parse_expression(Parser* p) @local
   return result::ok({.type = ALTERNATION,.children = alternatives});
 }
 
+<* Parses an EBNF term. *>
 fn Result{Node, ParseError} parse_term(Parser* p) @local
 {
   List{Node} sequence;
@@ -167,6 +175,7 @@ fn Result{Node, ParseError} parse_term(Parser* p) @local
   return result::ok({.type = SEQUENCE, .children = sequence});
 }
 
+<* Parses an EBNF factor. *>
 fn Result{Node, ParseError} parse_factor(Parser* p) @local
 {
   if(parser_match(p,LSBRACKET))
@@ -224,7 +233,11 @@ fn Result{Node, ParseError} parse_factor(Parser* p) @local
 }
 
 // Utils:
-fn bool parser_match(Parser* p, TokenType type) @local
+<*
+ Checks if the current token matches a type and
+ advances the input token
+*>
+fn bool parser_match(Parser* p,TokenType type) @local
 {
   if (parser_peek(p).type == type)
   {
@@ -234,27 +247,42 @@ fn bool parser_match(Parser* p, TokenType type) @local
   return false;
 }
 
+<*
+  Returns the current token from the scanner.
+*>
 fn Token parser_peek(Parser* p) @local
 {
   return p.scanner.tokens[p.i];
 }
 
+<*
+  Checks if the parser has reached the end of the token stream.
+*>
 fn bool parser_is_at_end(Parser* p) @inline @local
 {
   return parser_peek(p).type == EOF;
 }
 
-fn bool parser_check(Parser* p, TokenType type) @local
+<*
+  Checks the current token's type.
+*>
+fn bool parser_check(Parser* p,TokenType type) @local
 {
   if (parser_is_at_end(p)) return false;
   return parser_peek(p).type == type;
 }
 
+<*
+  Advances in the token stream.
+*>
 fn Token parser_advance(Parser* p) @inline @local
 {
   return p.scanner.tokens[p.i++];
 }
 
+<*
+ Consumes a token on success, or returns an error message.
+*>
 fn Result{Token, ParseError} parser_consume(Parser* p,
 					    TokenType type,
 					    String message) @local

@@ -83,10 +83,10 @@ fn sz? Node.to_format(&self, Formatter* f) @dynamic
   switch (self.type)
   {
     case TERMINAL:
-      len += f.printf(".terminal = %s", self.terminal)!;
+      len += f.printf(".terminal = %s}", self.terminal)!;
       break;
     case NON_TERMINAL:
-      len += f.printf(".non_terminal = %s", self.non_terminal)!;
+      len += f.printf(".non_terminal = %s}", self.non_terminal)!;
       break;
     case SEQUENCE:
     case ALTERNATION:
@@ -116,6 +116,7 @@ fn sz? Production.to_format(&self,Formatter* f) @dynamic
 {
   sz len = f.printf("(Production){.lhs = %s, ", self.lhs)!;
   len += self.rhs.to_format(f)!;
+  len += f.print("}")!;
   return len;
 }
 

@@ -6,6 +6,9 @@ import std::io;
 import std::os;
 
 // Scanner owns tokens.
+<*
+  EBNF Scanner struct.
+*>
 struct Scanner
 {
   Allocator allocator;
@@ -15,6 +18,9 @@ struct Scanner
   List{Token} tokens;
 }
 
+<*
+  Initializes the Scanner struct.
+*>
 fn void scanner_init(Scanner *scanner,
 		     Allocator allocator,
 		     String filename,
@@ -26,11 +32,17 @@ fn void scanner_init(Scanner *scanner,
   scanner.source = source;  
 }
 
-fn void scanner_free(Scanner *scanner) @private
+<*
+  Frees the associated data of the tokens.
+*>
+fn void scanner_free(Scanner *scanner) @inline @private
 {
   scanner.tokens.free();
 }
 
+<*
+  Scans the tokens from the input string.
+*>
 fn bool scanner_scan(Scanner *scanner,ParseError *err) @private
 {
   while(true) {
@@ -44,6 +56,9 @@ fn bool scanner_scan(Scanner *scanner,ParseError *err) @private
   return true;
 }
 
+<*
+  Scans and returns one Token.
+*>
 fn Result{Token,ParseError} scanner_scan_token(Scanner *scanner)
 {
   scanner_skip(scanner);
@@ -112,6 +127,9 @@ fn Result{Token,ParseError} scanner_scan_token(Scanner *scanner)
   }
 }
 
+<*
+ Skips (possibly nested) comments.
+*>
 fn bool scanner_skip_comments(Scanner *scanner,
 			      ParseError *err) @private
 {
@@ -145,6 +163,9 @@ fn bool scanner_skip_comments(Scanner *scanner,
   return true;
 }
 
+<*
+  Skips whitespace characters.
+*>
 fn void scanner_skip(Scanner *scanner)
 {
   while(!scanner_is_at_end(scanner) &&
@@ -156,6 +177,9 @@ fn void scanner_skip(Scanner *scanner)
   scanner.i = scanner.j;
 }
 
+<*
+  Scans a terminal Token.
+*>
 fn Result{Token,ParseError} scanner_scan_terminal(Scanner *scanner,
 						  char end) @private
 {
@@ -179,6 +203,9 @@ fn Result{Token,ParseError} scanner_scan_terminal(Scanner *scanner,
     .lexeme = scanner.source[scanner.i + 1:scanner.j - scanner.i - 1]});
 }
 
+<*
+  Scans a non-terminal Token.
+*>
 fn Result{Token,ParseError}
 scanner_scan_non_terminal(Scanner *scanner) @private
 {
@@ -193,17 +220,27 @@ scanner_scan_non_terminal(Scanner *scanner) @private
     .lexeme = scanner.source[scanner.i..scanner.j-1]});
 }
 
+<*
+  Checks if scanner is at the end.
+*>
 fn bool scanner_is_at_end(Scanner *scanner) @inline @private
 {
   return scanner.j >= scanner.source.len;
 }
 
+<*
+  Returns the current character of the Scanner.
+*>
 fn char scanner_peek(Scanner *scanner) @private
 {
   if(scanner_is_at_end(scanner)) return '\0';
   return scanner.source[scanner.j];
 }
 
+<*
+ Checks and advances by a character if that character is equal the
+ expected character.
+*>
 fn bool scanner_match(Scanner *scanner,
 		      char expected) @inline @private
 {
@@ -215,6 +252,9 @@ fn bool scanner_match(Scanner *scanner,
   return false;
 }
 
+<*
+ Advances the scanner by one character.
+*>
 fn char scanner_advance(Scanner *scanner) @private
 {
   if(scanner_is_at_end(scanner)) return '\0';
@@ -223,6 +263,9 @@ fn char scanner_advance(Scanner *scanner) @private
   return scanner.source[scanner.j++];
 }
 
+<*
+ Adds a newline to the Scanner's Position.
+*>
 fn void scanner_add_line(Scanner *scanner) @private
 {
   scanner.pos.row++;
@@ -230,6 +273,9 @@ fn void scanner_add_line(Scanner *scanner) @private
   scanner.pos.offset++;
 }
 
+<*
+ Checks if a character is valid in an identifier.
+*>
 fn bool is_identifier_char(char c) @inline @private
 {
   return ascii::is_alnum(c) || c == '_';

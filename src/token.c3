@@ -2,6 +2,9 @@ module ebnf;
 
 import std::io;
 
+<*
+  Position of a token in the file.
+*>
 struct Position(Printable)
 {
   String filename;
@@ -21,6 +24,9 @@ fn sz? Position.to_format(&self, Formatter* f) @dynamic
   return len;
 }
 
+<*
+  Type of a token.
+*>
 enum TokenType
 {
   EOF,
@@ -42,6 +48,9 @@ enum TokenType
 
 // Token owns nothing, lexeme is slices off of the original string
 // so the caller frees the source string.
+<*
+  A scanner Token.
+*>
 struct Token(Printable)
 {
   TokenType type;
