@@ -2,12 +2,10 @@ module ebnf;
 
 import std::collections;
 import std::core::ascii;
-import std::io;
-import std::os;
 
-// Scanner owns tokens.
 <*
-  EBNF Scanner struct.
+ EBNF Scanner struct.
+ Scanner owns tokens.
 *>
 struct Scanner
 {
