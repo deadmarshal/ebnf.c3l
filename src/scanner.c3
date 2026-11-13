@@ -9,7 +9,6 @@ import std::core::ascii;
 *>
 struct Scanner
 {
-  Allocator allocator;
   Position pos;
   usz i, j;
   String source;
@@ -24,7 +23,6 @@ fn void scanner_init(Scanner *scanner,
 		     String filename,
 		     String source) @private
 {
-  scanner.allocator = allocator;
   scanner.tokens.init(allocator);
   scanner.pos.filename = filename;
   scanner.source = source;  
@@ -57,7 +55,8 @@ fn bool scanner_scan(Scanner *scanner,ParseError *err) @private
 <*
   Scans and returns one Token.
 *>
-fn Result{Token,ParseError} scanner_scan_token(Scanner *scanner)
+fn Result{Token,ParseError}
+scanner_scan_token(Scanner *scanner) @private
 {
   scanner_skip(scanner);
   scanner.i = scanner.j;

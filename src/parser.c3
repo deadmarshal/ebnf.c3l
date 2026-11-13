@@ -26,7 +26,7 @@ struct Parser
   Allocator allocator;
   Position pos;
   sz i;
-  Scanner *scanner;
+  Scanner scanner;
 }
 
 <* Initializes both scanner and parser *>
@@ -36,8 +36,7 @@ fn void Parser.init(&self,
 		    String source)
 {
   // Scanner:
-  self.scanner = alloc::new(allocator,Scanner);
-  scanner_init(self.scanner,
+  scanner_init(&self.scanner,
 	       allocator,
 	       filename,
 	       source);
@@ -48,15 +47,14 @@ fn void Parser.init(&self,
 <* Frees associated memories and scanner and parser structures. *>
 fn void Parser.free(&self)
 {
-  scanner_free(self.scanner);
-  alloc::free(self.allocator,self.scanner);
+  scanner_free(&self.scanner);
 }
 
 <* Parses a string into an Ebnf structure. *>
 fn Result{Ebnf,ParseError} Parser.parse(&self)
 {
   ParseError err;
-  if(!scanner_scan(self.scanner,&err)) return result::err(err);
+  if(!scanner_scan(&self.scanner,&err)) return result::err(err);
   
   Ebnf ebnf;
   ebnf.init(self.allocator);
@@ -97,7 +95,7 @@ fn Result{Production, ParseError} parse_production(Parser* p) @local
 
   parser_consume(p,
 		 DOT,
-		 "Expected '.' after production's rhs").@or_else(; it)
+		 "Expected '.' after production's rhs").@or_else(;it)
   {
     prod.free(p.allocator);
     return result::err(it.error);
